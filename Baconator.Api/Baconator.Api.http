@@ -1,0 +1,6 @@
+@Baconator.Api_HostAddress = http://localhost:5231
+
+GET {{Baconator.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
