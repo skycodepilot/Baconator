@@ -24,7 +24,15 @@ public class MeatLocker
             { 
                 TotalPorkLbs = _inventory.Sum(b => b.WeightLbs),
                 BatchCount = _inventory.Count,
-                Batches = _inventory.ToList() // POSSIBLE issue with referencing same objects in memory (i.e. a deep copy issue), but leave it alone for now...
+                // Create a Deep Copy (Snapshot) so the API response is thread-safe
+                Batches = _inventory.Select(b => new PorkBatch 
+                {
+                    id = b.id,
+                    Supplier = b.Supplier,
+                    WeightLbs = b.WeightLbs,
+                    ExpirationDate = b.ExpirationDate,
+                    ReceivedDate = b.ReceivedDate
+                }).ToList() 
             };
         }
     }
