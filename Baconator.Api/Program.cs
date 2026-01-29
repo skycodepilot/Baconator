@@ -4,6 +4,8 @@ using Baconator.Api.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Host.UseSystemd(); // Tell app to handshake with Linux Systemd
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

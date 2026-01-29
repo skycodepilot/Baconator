@@ -1,4 +1,4 @@
-# 🥓 FreshStream (The Baconator)
+# 🥓 FreshStream (The "Baconator" API)
 **High-Concurrency Perishable Inventory Engine**
 
 > **Concept:** A .NET 9 Web API designed to handle high-velocity order ingestion for perishable goods (Pork) using a **FEFO (First Expired, First Out)** allocation strategy.
@@ -10,7 +10,7 @@ In food processing, standard inventory algorithms (FIFO/LIFO) could arguably res
 **Baconator** is an asynchronous backend service that decouples **Order Ingestion** from **Inventory Processing**.
 * **Zero-Blocking:** The API accepts orders instantly (`202 Accepted`) and offloads processing to a background worker.
 * **Spoilage Reduction:** Implements a **FEFO algorithm** to automatically allocate the oldest valid inventory first.
-* **Thread Safety:** Uses rigorous locking mechanisms to prevent race conditions during concurrent high-volume access.
+* **Thread Safety:** Implements in-memory ACID transaction logic via rigorous locking, ensuring that availability checks and inventory deductions occur as an atomic operation.
 
 ---
 
