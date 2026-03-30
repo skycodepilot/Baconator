@@ -7,6 +7,7 @@ public class PorkBatch
     public double WeightLbs { get; set;} // PorkBatch WAS a record before, and operations on WeightLbs failed - NOW this is mutable
     public DateTime ExpirationDate { get; set; }
     public DateTime ReceivedDate { get; set; } = DateTime.UtcNow;
+    public int Version { get; set; }
 }
 
 public class PorkInventory

@@ -2,41 +2,18 @@
 $baseUrl = "http://localhost:5231" # <--- Check your port from the 'dotnet run' output! (*This may change every time we run it)
 
 # ---------------------------------------------------------
-# VERSE 1: Stock the Fridge
+# CHORUS: The Stress Test (300 Orders @ 1000 lbs each)
 # ---------------------------------------------------------
-Write-Host "🎸 [SOUND CHECK] Stocking the fridge..." -ForegroundColor Cyan
+Write-Host "`n🔥 [THE SOLO] Slapping the API with 300 rapid-fire orders..." -ForegroundColor Yellow
 
-$batchId = [Guid]::NewGuid()
-$inventoryPayload = @{
-    id = $batchId
-    supplier = "Bootsy Collins Farms"
-    weightLbs = 1000
-    expirationDate = (Get-Date).AddDays(30)
-    receivedDate = (Get-Date)
-} | ConvertTo-Json
-
-try {
-    Invoke-RestMethod -Uri "$baseUrl/api/inventory" -Method Post -Body $inventoryPayload -ContentType "application/json"
-    Write-Host "✅ Inventory Loaded: 1000lbs of the Funk." -ForegroundColor Green
-}
-catch {
-    Write-Error "❌ Failed to stock inventory. Is the app running?"
-    exit
-}
-
-# ---------------------------------------------------------
-# CHORUS: The Stress Test (50 Orders @ 10lbs each)
-# ---------------------------------------------------------
-Write-Host "`n🔥 [THE SOLO] Slapping the API with 50 rapid-fire orders..." -ForegroundColor Yellow
-
-# We loop 50 times. fast.
-1..50 | ForEach-Object {
+# We loop 300 times. fast.
+1..300 | ForEach-Object {
     $orderId = [Guid]::NewGuid()
     
     $orderPayload = @{
         id = $orderId
         customer = "Funky Customer #$_"
-        amountRequested = 10
+        amountRequested = 1500
         createdAt = (Get-Date)
     } | ConvertTo-Json
 

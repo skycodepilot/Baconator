@@ -14,8 +14,14 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<BaconChannel>();
 builder.Services.AddSingleton<MeatLocker>();
 
+// Transients
+builder.Services.AddTransient<InventorySeeder, MockInventorySeeder>();
+
 // Register background worker (hosted service)
 builder.Services.AddHostedService<BaconWorker>();
+
+// Register chaos monkey
+builder.Services.AddHostedService<ChaosMonkey>();
 
 var app = builder.Build();
 
@@ -47,5 +53,14 @@ app.MapPost("/api/inventory", (MeatLocker meatLocker, Baconator.Api.Models.PorkB
     meatLocker.AddBatch(porkBatch);
     return Results.Ok(new { Status = "Stored" });
 });
+
+// Execution
+using (var scope = app.Services.CreateScope())
+{
+    var locker = scope.ServiceProvider.GetRequiredService<MeatLocker>();
+    var seeder = scope.ServiceProvider.GetRequiredService<InventorySeeder>();
+    
+    seeder.Seed(locker); // Clean, abstracted, and easily disabled in production
+}
 
 app.Run();

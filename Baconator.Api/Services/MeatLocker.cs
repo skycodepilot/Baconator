@@ -40,44 +40,81 @@ public class MeatLocker
     // Returns "Success/Fail" and list of "receipts" showing batches where meat was sourced
     public (bool Success, List<string> Receipt) TryFillOrder(double amountNeeded)
     {
-        lock (_lock) // We must lock this down to avoid anyone else trying to work with inventory while we calculate
+        // OPTIMISTIC READ: Snapshot data without locking
+        var snapshot = _inventory
+            .Where(b => b.ExpirationDate > DateTime.UtcNow)
+            .OrderBy(b => b.ExpirationDate)
+            .Select(b => new { b.id, b.WeightLbs, b.Version, b.Supplier })
+            .ToList();
+
+        if (snapshot.Sum(b => b.WeightLbs) < amountNeeded) {
+            return (false, new List<string> { "Insufficient Inventory" });
+        }
+
+        // CALCULATE DRAFT ALLOCATION
+        var receipt = new List<string>();
+        double remainingNeeded = amountNeeded;
+        var pendingMutations = new Dictionary<Guid, (double AmountToTake, int ReadVersion)>();
+
+        foreach (var batch in snapshot) {
+            if (remainingNeeded <= 0) break;
+
+            double amountToTake = Math.Min(batch.WeightLbs, remainingNeeded);
+            pendingMutations.Add(batch.id, (amountToTake, batch.Version));
+
+            remainingNeeded -= amountToTake;
+            receipt.Add($"Took {amountToTake}lbs from Batch {batch.Supplier}");
+        }
+
+        // 🔥 THE TRAP: Simulate network/DB latency to leave the door open for the monkey
+        Thread.Sleep(50); // Just a 50ms pause before we try to commit
+
+        // ATTEMPT COMMIT (with a version check)
+        lock (_lock)
         {
-            // Fail out early if we don't have enough meat
-            var validBatches = _inventory
-                .Where(b => b.ExpirationDate > DateTime.UtcNow)
-                .OrderBy(b => b.ExpirationDate) // FEFO Logic = oldest first
-                .ToList();
+            // Audit - did the chaos monkey alter any target batches?
+            foreach (var mutation in pendingMutations) {
+                var liveBatch = _inventory.FirstOrDefault(b => b.id == mutation.Key);
 
-            if (validBatches.Sum(b => b.WeightLbs) < amountNeeded)
-            {
-                return (false, new List<string> { "Insufficient Inventory" });
+                // If batch vanished or version incremented, abort and retry
+                if (liveBatch == null || liveBatch.Version != mutation.Value.ReadVersion) {
+                    Console.WriteLine($"[ALERT] Concurrency conflict on Batch {mutation.Key}! Data shifted. Retrying...");
+                    return TryFillOrder(amountNeeded); // Recursive retry
+                }
             }
 
-            // Still here? Deduct inventory from batch(es)
-            var receipt = new List<string>();
-            double remainingNeeded = amountNeeded;
-
-            foreach (var validBatch in validBatches)
-            {
-                if (remainingNeeded <= 0) break;
-
-                // How much can we take from this batch?
-                // Either take everything from the batch, or only what we need
-                double amountToTake = Math.Min(validBatch.WeightLbs, remainingNeeded);
-
-                // Update batch
-                validBatch.WeightLbs -= amountToTake;
-                remainingNeeded -= amountToTake;
-                receipt.Add($"Took {amountToTake}lbs from Batch {validBatch.Supplier}, expires {validBatch.ExpirationDate:M/d}");
-
-                // TODO: remove batch if it's empty (for now, just leave it at 0)
+            // Apply mutations
+            foreach (var mutation in pendingMutations) {
+                var liveBatch = _inventory.First(b => b.id == mutation.Key);
+                liveBatch.WeightLbs -= mutation.Value.AmountToTake;
+                liveBatch.Version++; // Increment version on successful write
             }
 
-            // Wrapping up
-            // Remove empty batches *here* to keep list clean
             _inventory.RemoveAll(b => b.WeightLbs <= 0);
-
             return (true, receipt);
+        }
+    }
+
+    // Method for chaos monkey
+    public void InduceChaos(double variance)
+    {
+        lock (_lock)
+        {
+            if (!_inventory.Any()) return;
+            
+            // Grab the 10 oldest batches (the ones the API is actively trying to buy)
+            var frontOfTheLine = _inventory
+                .OrderBy(b => b.ExpirationDate)
+                .Take(10)
+                .ToList();
+                
+            var random = new Random();
+            var target = frontOfTheLine[random.Next(frontOfTheLine.Count)];
+            
+            target.WeightLbs += variance; 
+            target.Version++; 
+            
+            Console.WriteLine($"[CHAOS] Batch {target.id.ToString()[..4]} shifted by {variance}lbs. New Version: {target.Version}");
         }
     }
 }
