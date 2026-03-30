@@ -2,7 +2,7 @@
 $baseUrl = "http://localhost:5231" # <--- Check your port from the 'dotnet run' output! (*This may change every time we run it)
 
 # ---------------------------------------------------------
-# CHORUS: The Stress Test (300 Orders @ 1000 lbs each)
+# CHORUS: The Stress Test (300 Orders @ 1500 lbs each)
 # ---------------------------------------------------------
 Write-Host "`n🔥 [THE SOLO] Slapping the API with 300 rapid-fire orders..." -ForegroundColor Yellow
 
